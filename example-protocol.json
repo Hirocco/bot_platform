@@ -1,0 +1,13 @@
+{
+  "type": {
+    "signal": "boolean",
+    "command": "text",
+    "data": "object",
+    "error": "text"
+  },
+  "payload": {},
+  "createdAt": "datetime",
+  "createdBy": "id",
+  "clientId": "id",
+  "botId": "id"
+}

@@ -1,0 +1,6 @@
+1. User registers/logs in → Express Service
+2. Express validates user credentials → JWT token
+3. User creates bot configuration → Express Service
+4. Express calls Python Bot Service with MT5 credentials
+5. Python Service creates bot session
+6. Express stores bot_session_id ↔ user_id mapping
