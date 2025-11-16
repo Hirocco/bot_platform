@@ -1,11 +1,20 @@
-<script setup></script>
-
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <component :is="layoutComponent">
+    <router-view />
+  </component>
 </template>
 
-<style scoped></style>
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import LoginLayout from '@/layouts/LoginLayout.vue'
+
+const route = useRoute()
+const layoutComponent = computed(() => {
+  // Możesz dodać więcej warunków dla różnych layoutów
+  if (route.path === '/login') {
+    return LoginLayout
+  }
+  return 'div' // Domyślny layout
+})
+</script>
