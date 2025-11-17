@@ -3,10 +3,15 @@
     <v-container fluid class="fill-height pa-0">
       <v-row class="fill-height" no-gutters>
         <!-- LEWA KOLUMNA – FORM WYPEŁNIA TŁO -->
-        <v-col cols="12" md="4" class="h-100">
+        <v-col cols="12" md="4" class="h-100 align-center justify-center">
           <v-sheet class="login-left h-100" elevation="8">
             <v-container class="h-100 d-flex align-center justify-center">
-              <LoginForm />
+              <div class="left-content">
+                <div class="logo-wrapper">
+                  <img src="@/assets/tfx-logo-removebg.png" alt="TFX Logo" class="logo" />
+                </div>
+                <LoginForm />
+              </div>
             </v-container>
           </v-sheet>
         </v-col>
@@ -85,10 +90,21 @@ import LoginForm from '@/components/LoginForm.vue'
 /* LEWA STRONA */
 .login-left {
   background:
-    radial-gradient(circle at 0% 0%, #0b1626, transparent 50%),
-    linear-gradient(180deg, #050d18, #081b2f);
-  border-right: 1px solid rgba(150, 220, 255, 0.15);
-  backdrop-filter: blur(4px);
+    linear-gradient(180deg, #050d18, #081b2f),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.04) 0px,
+      rgba(255, 255, 255, 0.04) 1px,
+      transparent 1px,
+      transparent 24px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.04) 0px,
+      rgba(255, 255, 255, 0.04) 1px,
+      transparent 1px,
+      transparent 24px
+    );
 }
 
 /* PRAWA STRONA */
@@ -138,6 +154,7 @@ import LoginForm from '@/components/LoginForm.vue'
 
 .stat-card {
   background: rgba(4, 13, 26, 0.92);
+  min-height: 100%;
   border-radius: 14px;
   border: 1px solid rgba(134, 214, 255, 0.7);
   box-shadow:
@@ -178,5 +195,18 @@ import LoginForm from '@/components/LoginForm.vue'
   100% {
     background-position: 50% 0%;
   }
+}
+.logo-wrapper {
+  margin-top: -15vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  transform: translateY(-5%);
+}
+
+.logo {
+  width: 300px;
+  height: auto;
+  filter: brightness(0.92) saturate(0.8);
 }
 </style>
