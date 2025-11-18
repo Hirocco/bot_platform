@@ -8,7 +8,7 @@
             <v-container class="h-100 d-flex align-center justify-center">
               <div class="left-content">
                 <div class="logo-wrapper">
-                  <img src="@/assets/tfx-logo-removebg.png" alt="TFX Logo" class="logo" />
+                  <img src="/tfx-logo-removebg.png" alt="TFX Logo" class="logo" />
                 </div>
                 <LoginForm />
               </div>
