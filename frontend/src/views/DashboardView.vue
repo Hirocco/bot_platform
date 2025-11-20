@@ -1,147 +1,24 @@
-<script setup lang="ts">
-import { ref } from 'vue'
-import DashboardLayout from '@/layouts/DashboardLayout.vue'
-import DashboardHeader from '@/components/dashboard/DashboardHeader.vue'
-import DashboardSummaryRow from '@/components/dashboard/DashboardSummaryRow.vue'
-import DashboardChart from '@/components/dashboard/DashboardChart.vue'
-import DashboardPositionsTable from '@/components/dashboard/DashboardPositionstable.vue'
-
-const balanceLabels = ref<string[]>(['Jan', 'Feb', 'Mar', 'Apr'])
-const balanceValues = ref<number[]>([1000, 1200, 1500, 1300])
-
-const equityLabels = ref<string[]>(['Jan', 'Feb', 'Mar', 'Apr'])
-const equityValues = ref<number[]>([900, 1100, 1400, 1250])
-
-const positions = ref([
-  {
-    symbol: 'EURUSD',
-    positionId: 101234,
-    entry: 1.0765,
-    current: 1.0819,
-    size: 0.5,
-    sl: 1.07,
-    tp: 1.09,
-    pnl: 122.44,
-    status: 'PROFIT',
-    openTime: '2025-11-18T15:42:11Z',
-  },
-  {
-    symbol: 'GBPUSD',
-    positionId: 101235,
-    entry: 1.265,
-    current: 1.2638,
-    size: 0.3,
-    sl: 1.26,
-    tp: 1.275,
-    pnl: -36.12,
-    status: 'LOSS',
-    openTime: '2025-11-18T14:58:19Z',
-  },
-  {
-    symbol: 'XAUUSD',
-    positionId: 101236,
-    entry: 2425.5,
-    current: 2449.9,
-    size: 0.1,
-    sl: 2410.0,
-    tp: 2480.0,
-    pnl: 244.0,
-    status: 'PROFIT',
-    openTime: '2025-11-18T13:12:45Z',
-  },
-  {
-    symbol: 'USDJPY',
-    positionId: 101237,
-    entry: 151.23,
-    current: 151.48,
-    size: 1.0,
-    sl: 150.8,
-    tp: 152.0,
-    pnl: 250.0,
-    status: 'PROFIT',
-    openTime: '2025-11-18T16:03:55Z',
-  },
-  {
-    symbol: 'AUDUSD',
-    positionId: 101238,
-    entry: 0.6582,
-    current: 0.6569,
-    size: 0.8,
-    sl: 0.655,
-    tp: 0.662,
-    pnl: -104.0,
-    status: 'LOSS',
-    openTime: '2025-11-18T11:28:41Z',
-  },
-  {
-    symbol: 'USDCAD',
-    positionId: 101239,
-    entry: 1.3655,
-    current: 1.3688,
-    size: 0.4,
-    sl: 1.36,
-    tp: 1.3725,
-    pnl: 132.0,
-    status: 'PROFIT',
-    openTime: '2025-11-18T12:10:02Z',
-  },
-  {
-    symbol: 'NZDUSD',
-    positionId: 101240,
-    entry: 0.6051,
-    current: 0.604,
-    size: 0.6,
-    sl: 0.602,
-    tp: 0.61,
-    pnl: -66.0,
-    status: 'LOSS',
-    openTime: '2025-11-18T10:17:58Z',
-  },
-  {
-    symbol: 'EURJPY',
-    positionId: 101241,
-    entry: 162.34,
-    current: 162.87,
-    size: 0.5,
-    sl: 161.9,
-    tp: 163.2,
-    pnl: 265.0,
-    status: 'PROFIT',
-    openTime: '2025-11-18T13:49:12Z',
-  },
-  {
-    symbol: 'GBPJPY',
-    positionId: 101242,
-    entry: 188.45,
-    current: 188.12,
-    size: 0.3,
-    sl: 188.0,
-    tp: 189.2,
-    pnl: -99.0,
-    status: 'LOSS',
-    openTime: '2025-11-18T09:33:27Z',
-  },
-  {
-    symbol: 'XAUUSD',
-    positionId: 101243,
-    entry: 2438.2,
-    current: 2443.5,
-    size: 0.2,
-    sl: 2420.0,
-    tp: 2470.0,
-    pnl: 106.0,
-    status: 'PROFIT',
-    openTime: '2025-11-18T16:09:33Z',
-  },
-])
-</script>
 <template>
   <DashboardLayout>
     <v-container class="dashboard-container pt-12 d-flex flex-column">
       <DashboardHeader />
 
-      <DashboardSummaryRow />
+      <!-- prosty loader + error -->
+      <div v-if="isLoading" class="text-center py-4">Ładowanie dashboardu...</div>
+      <div v-else-if="error" class="text-center py-4 red--text">
+        {{ error }}
+      </div>
 
+      <!-- Karty podsumowania -->
+      <DashboardSummaryRow
+        v-if="account"
+        :balance="account.balance"
+        :equity="account.equity"
+        :positions="positions.length"
+        :pnl="calculatedPnl"
+      />
+
+      <!-- Wiersz wykresów -->
       <section class="charts-row">
         <DashboardChart
           title="Balance History"
@@ -156,36 +33,141 @@ const positions = ref([
           lineColor="rgba(16,185,129,1)"
         />
       </section>
+
+      <!-- Tabela pozycji -->
       <section class="dashboard-section dashboard-section--bottom">
-        <DashboardPositionsTable :positions="positions" />
+        <DashboardPositionsTable :positions="tablePositions" />
       </section>
+
+      <!-- Debug: ostatni update -->
+      <div class="text-right text-caption mt-2" v-if="lastUpdate">
+        Last update: {{ lastUpdate }}
+      </div>
     </v-container>
   </DashboardLayout>
 </template>
 
+<script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useDashboardStore } from '@/stores/DashboardStore'
+
+import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import DashboardHeader from '@/components/dashboard/DashboardHeader.vue'
+import DashboardSummaryRow from '@/components/dashboard/DashboardSummaryRow.vue'
+import DashboardChart from '@/components/dashboard/DashboardChart.vue'
+import DashboardPositionsTable from '@/components/dashboard/DashboardPositionsTable.vue'
+
+type BackendPosition = {
+  ticket: number
+  opened_at: string
+  updated_at: string
+  type: number
+  reason: number
+  magic: number
+  identifier: number
+  symbol: string
+  volume: number
+  price_open: number
+  sl: number
+  tp: number
+  price_current: number
+  swap: number
+  profit: number
+  comment: string | null
+}
+type TablePosition = {
+  ticket: number
+  symbol: string
+  entry: number
+  current: number
+  size: number
+  pnl: number
+  openTime: string
+}
+
+// 1) store
+const dashboardStore = useDashboardStore()
+const { account, positions, lastUpdate, error } = storeToRefs(dashboardStore)
+
+const isLoading = ref(true)
+
+// 2) dane do wykresów (reagują na lastUpdate)
+const balanceLabels = ref<string[]>([])
+const balanceValues = ref<number[]>([])
+const equityLabels = ref<string[]>([])
+const equityValues = ref<number[]>([])
+
+// 3) PnL (prosty przykład – z pozycji)
+const calculatedPnl = computed(() =>
+  positions.value.reduce((sum, p: BackendPosition) => sum + (p.profit ?? 0), 0),
+)
+
+// 4) mapowanie pozycji do formatu tabeli
+
+const tablePositions = computed<TablePosition[]>(() =>
+  positions.value.map((p: BackendPosition) => ({
+    ticket: p.ticket,
+    symbol: p.symbol,
+    entry: p.price_open,
+    current: p.price_current,
+    size: p.volume,
+    pnl: p.profit,
+    openTime: p.opened_at,
+  })),
+)
+
+// 5) start / stop WebSocketa
+onMounted(() => {
+  dashboardStore.connectWs()
+
+  // przestajemy pokazywać "Ładowanie..." po pierwszym snapshotcie
+  const stop = watch(
+    account,
+    (acc) => {
+      if (acc) {
+        isLoading.value = false
+        stop()
+      }
+    },
+    { immediate: true },
+  )
+})
+
+onBeforeUnmount(() => {
+  dashboardStore.disconnectWs()
+})
+
+// 6) reagowanie na każdy nowy snapshot – aktualizacja serii historycznych
+watch(
+  lastUpdate,
+  (ts) => {
+    if (!ts || !account.value) return
+
+    // dodajemy kolejne punkty (immutability -> wymusza rerender Chart.js)
+    balanceLabels.value = [...balanceLabels.value, ts]
+    balanceValues.value = [...balanceValues.value, account.value.balance]
+
+    equityLabels.value = [...equityLabels.value, ts]
+    equityValues.value = [...equityValues.value, account.value.equity]
+  },
+  { immediate: false },
+)
+</script>
+
 <style scoped>
 .dashboard-container {
-  background-color: #020617;
-  min-height: 100vh;
-  min-width: 100%;
+  max-width: 1400px;
 }
 
 .charts-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
   margin-top: 24px;
-  align-items: stretch;
 }
 
-/* każdy child (czyli root <div> z DashboardChart) ma dzielić szerokość */
-.charts-row > * {
-  flex: 1 1 0;
-}
-
-/* responsywność – na wąskich ekranach znów jeden pod drugim */
-@media (max-width: 1024px) {
-  .charts-row {
-    flex-direction: column;
-  }
+.dashboard-section--bottom {
+  margin-top: 32px;
 }
 </style>

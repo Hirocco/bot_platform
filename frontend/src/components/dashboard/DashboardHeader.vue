@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import logoSrc from '/tfx-logo-removebg.png'
+import { mdiChartLine, mdiViewDashboardOutline, mdiTuneVariant, mdiCogOutline } from '@mdi/js'
 
-import { mdiViewDashboardOutline, mdiChartLine, mdiTuneVariant, mdiCogOutline } from '@mdi/js'
-
+// ROUTING / TABS
 const router = useRouter()
 const route = useRoute()
 
@@ -15,10 +15,8 @@ const tabs = [
   { label: 'Settings', name: 'settings', icon: mdiCogOutline },
 ]
 
-// lokalny stan zakładki – żeby VTabs ZAWSZE reagował, nawet jak route nie zmienia się poprawnie
 const currentTab = ref<string>('dashboard')
 
-// przy starcie dopasuj do aktualnej trasy (jeśli jest na liście)
 onMounted(() => {
   const name = route.name as string | undefined
   if (name && tabs.some((t) => t.name === name)) {
@@ -26,7 +24,6 @@ onMounted(() => {
   }
 })
 
-// aktualizuj zakładkę, gdy zmieni się route (np. z zewnątrz)
 watch(
   () => route.name,
   (name) => {
@@ -37,63 +34,124 @@ watch(
   },
 )
 
-// na kliknięcie w zakładkę – zmień trasę
-// handler wywoływany przez @update:model-value w szablonie
 const handleTabChange = (val: unknown) => {
-  const s = val as string | undefined
-  if (s && s !== currentTab.value) {
-    currentTab.value = s
+  if (typeof val !== 'string') return
+  currentTab.value = val
+  if (val !== route.name) {
+    router.push({ name: val }).catch(() => {})
   }
 }
 
-watch(currentTab, (val) => {
-  if (val && val !== route.name) {
-    router.push({ name: val }).catch(() => {})
+// BOT STATE / BUTTONY
+
+const BOT_STATES = {
+  DISCONNECTED: 'DISCONNECTED',
+  CONNECTING: 'CONNECTING',
+  CONNECTED_IDLE: 'CONNECTED IDLE',
+  TRADING: 'TRADING',
+  STOPPING: 'STOPPING',
+  ERROR: 'ERROR',
+  BOT_CONNECTED: 'BOT CONNECTED',
+} as const
+
+type BotState = (typeof BOT_STATES)[keyof typeof BOT_STATES]
+
+const props = defineProps<{
+  botState?: BotState
+  onToggleTrading?: () => void
+  onReconnect?: () => void
+}>()
+
+const emit = defineEmits<{
+  (e: 'toggle-trading'): void
+  (e: 'reconnect'): void
+}>()
+
+const isTrading = computed(() => props.botState === BOT_STATES.TRADING)
+
+const stateLabel = computed(() => {
+  // Ładniejszy label, ale dalej 1:1 ze stanem
+  switch (props.botState) {
+    case BOT_STATES.DISCONNECTED:
+      return 'DISCONNECTED'
+    case BOT_STATES.CONNECTING:
+      return 'CONNECTING'
+    case BOT_STATES.CONNECTED_IDLE:
+      return 'CONNECTED IDLE'
+    case BOT_STATES.TRADING:
+      return 'TRADING'
+    case BOT_STATES.STOPPING:
+      return 'STOPPING'
+    case BOT_STATES.ERROR:
+      return 'ERROR'
+    case BOT_STATES.BOT_CONNECTED:
+      return 'BOT CONNECTED'
+    default:
+      return String(props.botState || 'ONLINE')
   }
 })
+
+const tradingButtonLabel = computed(() => (isTrading.value ? 'Stop trading' : 'Start trading'))
 </script>
 
 <template>
   <header class="header">
+    <!-- LEWA STRONA: LOGO + TYTUŁ -->
     <div class="header-left">
       <div class="logo-wrapper">
         <img :src="logoSrc" alt="TFX Logo" class="logo-img" />
       </div>
 
       <div class="title-block">
-        <h1 class="dashboard-title">Dashboard</h1>
-
-        <div class="live-indicator">
-          <span class="live-dot"></span>
-          <span class="live-text">LIVE</span>
-        </div>
+        <h1 class="dashboard-title">TFX - Dashboard</h1>
       </div>
     </div>
 
-    <nav class="header-nav">
-      <nav class="header-nav">
-        <v-tabs
-          v-model="currentTab"
-          @update:model-value="handleTabChange"
-          align-tabs="end"
-          density="comfortable"
-          class="dashboard-tabs"
+    <!-- PRAWY GÓRNY BLOK: LIVE | STATE + PRZYCISKI -->
+    <div class="header-right">
+      <div class="status-chip">
+        <span class="live-dot"></span>
+        <span class="live-text">LIVE</span>
+        <span class="status-separator">|</span>
+        <span class="state-text">{{ stateLabel }}</span>
+      </div>
+
+      <div class="header-actions">
+        <v-btn size="small" variant="outlined" class="btn-reconnect" @click="emit('reconnect')">
+          Reconnect
+        </v-btn>
+
+        <v-btn
+          size="small"
+          :color="isTrading ? 'orange-darken-2' : 'primary'"
+          class="btn-trading"
+          @click="emit('toggle-trading')"
         >
-          <v-tab v-for="tab in tabs" :key="tab.name" :value="tab.name" class="dashboard-tab">
-            <v-icon :icon="tab.icon" size="18" class="mr-2" />
-            <span>{{ tab.label }}</span>
-          </v-tab>
-        </v-tabs>
-      </nav>
+          {{ tradingButtonLabel }}
+        </v-btn>
+      </div>
+    </div>
+
+    <!-- PASEK NAWIGACJI: TABS -->
+    <nav class="header-nav">
+      <v-tabs
+        v-model="currentTab"
+        @update:model-value="handleTabChange"
+        align-tabs="end"
+        density="comfortable"
+        class="dashboard-tabs"
+      >
+        <v-tab v-for="tab in tabs" :key="tab.name" :value="tab.name" class="dashboard-tab">
+          <!-- jeśli masz poprawnie skonfigurowane mdi-svg, to zadziała: -->
+          <v-icon :icon="tab.icon" size="18" class="mr-2" />
+          <span>{{ tab.label }}</span>
+        </v-tab>
+      </v-tabs>
     </nav>
   </header>
 </template>
 
 <style scoped>
-/* ———————————————————————————————————————————————
-   HEADER – fixed, kolory jak makieta, box-shadow
-   ——————————————————————————————————————————————— */
-
 .header {
   position: fixed;
   top: 0;
@@ -102,22 +160,26 @@ watch(currentTab, (val) => {
   z-index: 100;
 
   box-sizing: border-box;
-  padding: 14px 32px;
+  padding: 10px 32px; /* niższy header, dopasowany do guzików */
   display: flex;
+  flex-wrap: wrap; /* tabs spadają w drugi rząd */
   align-items: center;
-  justify-content: space-between;
-  gap: 28px;
-  flex-wrap: nowrap;
+  column-gap: 24px;
+  row-gap: 8px;
 
-  background: radial-gradient(circle at top left, #1f2937 0, #020617 42%, #000000 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(9, 12, 23, 1) 0%,
+    /* ciemniejsza lewa */ rgba(12, 16, 29, 1) 35%,
+    /* smooth transition */ rgba(20, 25, 42, 1) 100% /* jaśniejsza prawa */
+  );
   box-shadow:
-    0 18px 45px rgba(15, 23, 42, 0.85),
-    0 0 0 1px rgba(148, 163, 184, 0.07);
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    /* miękki główny cień */ 0 1px 0 rgba(255, 255, 255, 0.05),
+    /* delikatna linia highlightu */ inset 0 -1px 0 rgba(255, 255, 255, 0.04); /* subtelna wewnętrzna linia */
 }
 
-/* ———————————————————————————————————————————————
-   LEWA STRONA: LOGO + TYTUŁ + LIVE
-   ——————————————————————————————————————————————— */
+/* LEWA STRONA */
 
 .header-left {
   display: flex;
@@ -130,11 +192,11 @@ watch(currentTab, (val) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 60px;
+  height: 44px;
 }
 
 .logo-img {
-  height: 100%;
+  height: 44px;
   width: auto;
   object-fit: contain;
   display: block;
@@ -144,10 +206,8 @@ watch(currentTab, (val) => {
 .title-block {
   display: flex;
   align-items: center;
-  gap: 18px;
 }
 
-/* tytuł dopasowany do makiety: */
 .dashboard-title {
   margin: 0;
   font-size: 24px;
@@ -157,28 +217,54 @@ watch(currentTab, (val) => {
   color: #f9fafb;
 }
 
-/* LIVE – jak w makiecie: delikatny, neonowy dot */
-.live-indicator {
+/* PRAWY GÓRNY BLOK: STATUS + BUTTONY */
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* LIVE ● | STATE */
+
+.status-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  opacity: 0.75;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  backdrop-filter: blur(10px);
 }
 
 .live-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: #22c55e;
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.9);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.9);
   animation: liveBlink 1.4s infinite;
 }
 
 .live-text {
-  font-size: 11px;
-  text-transform: uppercase;
+  font-size: 12px;
   letter-spacing: 0.14em;
-  color: #cbd5e1;
+  text-transform: uppercase;
+  color: #e5e7eb;
+}
+
+.status-separator {
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.state-text {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #38bdf8;
 }
 
 @keyframes liveBlink {
@@ -191,21 +277,41 @@ watch(currentTab, (val) => {
   }
 }
 
-/* ———————————————————————————————————————————————
-   PRAWA STRONA: TABS
-   ——————————————————————————————————————————————— */
+/* PRZYCISKI */
 
-.header-nav {
-  margin-left: auto;
-  max-width: 100%;
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-/* kontener tabsów: w trybie desktop niech będzie "przyklejony" do prawej */
+.btn-reconnect {
+  text-transform: none;
+  font-size: 13px;
+  border-radius: 999px;
+  border-color: rgba(148, 163, 184, 0.6) !important;
+}
+
+.btn-trading {
+  text-transform: none;
+  font-size: 13px;
+  border-radius: 999px;
+  padding-inline: 18px;
+}
+
+/* TABS */
+
+.header-nav {
+  grid-area: nav;
+  margin-left: 29%;
+}
+
 .dashboard-tabs {
   max-width: 100%;
 }
 
-/* podstawowy wygląd zakładek – kolory z makiety */
+/* kolory dopasowane do makiety */
+
 .dashboard-tabs :deep(.v-tab) {
   text-transform: none;
   padding-inline: 18px;
@@ -222,13 +328,11 @@ watch(currentTab, (val) => {
   color: #e5e7eb;
 }
 
-/* aktywna zakładka – biała, pogrubiona */
 .dashboard-tabs :deep(.v-tab--selected) {
   color: #f9fafb !important;
   font-weight: 600;
 }
 
-/* ikony – mniej/więcej krycia w zależności od stanu */
 .dashboard-tabs :deep(.v-tab .v-icon) {
   opacity: 0.7;
   transition: opacity 0.18s ease;
@@ -238,7 +342,6 @@ watch(currentTab, (val) => {
   opacity: 1;
 }
 
-/* slider (podkreślenie) – dopasowany kolorystycznie + SLIDE animacja */
 .dashboard-tabs :deep(.v-tabs-slider) {
   background: linear-gradient(90deg, #38bdf8, #6366f1);
   height: 3px;
@@ -250,43 +353,26 @@ watch(currentTab, (val) => {
     transform 0.22s ease;
 }
 
-/* dodatkowy efekt slide na zmianę zakładki – lekkie przesunięcie */
-.dashboard-tabs :deep(.v-slide-group__content) {
-  transition: transform 0.22s ease;
-}
-
-/* ———————————————————————————————————————————————
-   TRYB MOBILNY
-   ——————————————————————————————————————————————— */
+/* MOBILE */
 
 @media (max-width: 960px) {
   .header {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      'left'
+      'right'
+      'nav';
     padding: 12px 16px;
-    flex-wrap: wrap;
-    gap: 16px;
+    row-gap: 8px;
   }
 
-  .header-left {
-    width: 100%;
-  }
-
-  .header-nav {
-    width: 100%;
-    max-width: 100%;
-    margin-left: 0;
-  }
-
-  .dashboard-tabs {
-    width: 100%;
-  }
-
-  /* tabs przewijalne poziomo na mobile, jak w nowoczesnych UI */
-  .dashboard-tabs :deep(.v-slide-group__container) {
-    min-width: 100%;
-  }
-
-  .dashboard-tabs :deep(.v-slide-group__content) {
+  .header-right {
     justify-content: space-between;
+  }
+
+  .header-actions {
+    gap: 8px;
   }
 
   .dashboard-tabs :deep(.v-tab) {
@@ -294,23 +380,8 @@ watch(currentTab, (val) => {
     font-size: 13px;
   }
 
-  .title-block {
-    gap: 10px;
-  }
-
   .dashboard-title {
     font-size: 20px;
-  }
-
-  .live-indicator {
-    display: none; /* opcjonalnie ukryj LIVE na wąskich ekranach */
-  }
-}
-
-@media (max-width: 640px) {
-  /* jeszcze ciaśniej – ikony ważniejsze niż tekst */
-  .dashboard-tabs :deep(.v-tab span:last-child) {
-    font-size: 12px;
   }
 }
 </style>

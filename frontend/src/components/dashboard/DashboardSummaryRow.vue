@@ -5,7 +5,7 @@
       <div class="metric-col">
         <MetricCard
           label="ACCOUNT BALANCE"
-          :value="demoMetrics.balance"
+          :value="props.balance"
           value-mode="currency"
           currency="USD"
           :change="demoMetrics.balanceChange"
@@ -17,7 +17,7 @@
       <div class="metric-col">
         <MetricCard
           label="CURRENT EQUITY"
-          :value="demoMetrics.equity"
+          :value="props.equity"
           value-mode="currency"
           currency="USD"
           :change="demoMetrics.equityChange"
@@ -29,7 +29,7 @@
       <div class="metric-col">
         <MetricCard
           label="OPEN POSITIONS"
-          :value="demoMetrics.openPositions"
+          :value="props.positions"
           value-mode="number"
           :change="null"
           change-mode="text"
@@ -41,7 +41,7 @@
       <div class="metric-col">
         <MetricCard
           label="DAILY P&L"
-          :value="demoMetrics.dailyPnl"
+          :value="props.pnl"
           value-mode="currency"
           currency="USD"
           :change="demoMetrics.dailyPnlChangePercent"
@@ -57,6 +57,7 @@
 import { reactive } from 'vue'
 import MetricCard from './DashboardMetricCard.vue'
 
+// demo data
 const demoMetrics = reactive({
   balance: 10549.87,
   balanceChange: -6.52,
@@ -65,6 +66,19 @@ const demoMetrics = reactive({
   openPositions: 3,
   dailyPnl: 209.51,
   dailyPnlChangePercent: 2.0,
+})
+
+// function pnlHelper(balance : number, equity : number){
+//   if(balance - equity > 0) return 'negative'
+//   else return 'positive'
+//   return 'neutral'
+// }
+
+const props = defineProps({
+  balance: { type: Number, required: true },
+  equity: { type: Number, required: true },
+  positions: { type: Number, required: true },
+  pnl: { type: Number, required: true },
 })
 </script>
 <style scoped>
