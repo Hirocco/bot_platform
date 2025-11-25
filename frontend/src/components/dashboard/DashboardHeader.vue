@@ -303,7 +303,7 @@ const tradingButtonLabel = computed(() => (isTrading.value ? 'Stop trading' : 'S
 
 .header-nav {
   grid-area: nav;
-  margin-left: 29%;
+  margin-left: 10vw;
 }
 
 .dashboard-tabs {

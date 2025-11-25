@@ -119,7 +119,9 @@ const updateChart = () => {
   if (!chartInstance) return
 
   const labels = chartInstance.data.labels as string[]
-  const data = chartInstance.data.datasets[0].data as number[]
+  const dataset = chartInstance.data.datasets[0]
+  if (!dataset) return
+  const data = dataset.data as number[]
 
   // Sync chart data with props
   // Clear and repopulate (more reliable than direct assignment)
@@ -155,6 +157,25 @@ watch(
     updateChart()
   },
 )
+// Lekki update tylko bieżącego punktu (jak ruch ceny w trakcie świecy)
+watch(
+  () => props.data[props.data.length - 1],
+  (newVal) => {
+    if (!chartInstance) return
+    if (!props.data.length) return
+
+    const dataset = chartInstance.data.datasets[0]
+    if (!dataset) return
+    const data = dataset.data as number[]
+    const lastIdx = data.length - 1
+    if (lastIdx < 0) return
+    if (newVal == null || Number.isNaN(newVal)) return
+
+    data[lastIdx] = newVal
+    chartInstance.update('none')
+  },
+)
+
 </script>
 
 <style scoped>

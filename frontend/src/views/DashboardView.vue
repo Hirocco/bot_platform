@@ -92,9 +92,21 @@ const balanceValues = ref<number[]>([])
 const equityLabels = ref<string[]>([])
 const equityValues = ref<number[]>([])
 
-const calculatedPnl = computed(() =>
-  positions.value.reduce((sum, p: BackendPosition) => sum + (p.profit ?? 0), 0),
+// 🔹 Łączny PnL z aktualnie otwartych pozycji (w $)
+const dailyPnl = computed(() =>
+  positions.value.reduce(
+    (sum, p: BackendPosition) => sum + (p.profit ?? 0),
+    0,
+  ),
 )
+
+// 🔹 Procentowy PnL względem bieżącego balansu konta
+//     np. -50$ przy balance 80_000$ => -0.0625%
+const calculatedPnl = computed(() => {
+  if (!account.value || account.value.balance === 0) return 0
+  return (dailyPnl.value / account.value.balance) * 100
+})
+
 
 const tablePositions = computed<TablePosition[]>(() =>
   positions.value.map((p: BackendPosition) => ({

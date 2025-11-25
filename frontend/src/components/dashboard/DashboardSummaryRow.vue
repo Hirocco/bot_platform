@@ -38,7 +38,7 @@
 
       <div class="metric-col">
         <MetricCard
-          label="DAILY P&L"
+          label="Positions P&L"
           :value="props.pnl"
           value-mode="currency"
           currency="USD"
@@ -52,25 +52,8 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
 import MetricCard from './DashboardMetricCard.vue'
 
-// demo data
-const demoMetrics = reactive({
-  balance: 10549.87,
-  balanceChange: -6.52,
-  equity: 10708.18,
-  equityChange: 6.09,
-  openPositions: 3,
-  dailyPnl: 209.51,
-  dailyPnlChangePercent: 2.0,
-})
-
-// function pnlHelper(balance : number, equity : number){
-//   if(balance - equity > 0) return 'negative'
-//   else return 'positive'
-//   return 'neutral'
-// }
 
 const props = defineProps({
   balance: { type: Number, required: true },
