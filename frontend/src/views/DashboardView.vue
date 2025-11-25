@@ -3,13 +3,11 @@
     <v-container class="dashboard-container pt-12 d-flex flex-column">
       <DashboardHeader />
 
-      <!-- prosty loader + error -->
       <div v-if="isLoading" class="text-center py-4">Ładowanie dashboardu...</div>
       <div v-else-if="error" class="text-center py-4 red--text">
         {{ error }}
       </div>
 
-      <!-- Karty podsumowania -->
       <DashboardSummaryRow
         v-if="account"
         :balance="account.balance"
@@ -18,7 +16,6 @@
         :pnl="calculatedPnl"
       />
 
-      <!-- Wiersz wykresów -->
       <section class="charts-row">
         <DashboardChart
           title="Balance History"
@@ -34,12 +31,10 @@
         />
       </section>
 
-      <!-- Tabela pozycji -->
       <section class="dashboard-section dashboard-section--bottom">
         <DashboardPositionsTable :positions="tablePositions" />
       </section>
 
-      <!-- Debug: ostatni update -->
       <div class="text-right text-caption mt-2" v-if="lastUpdate">
         Last update: {{ lastUpdate }}
       </div>
@@ -86,24 +81,20 @@ type TablePosition = {
   openTime: string
 }
 
-// 1) store
 const dashboardStore = useDashboardStore()
 const { account, positions, lastUpdate, error } = storeToRefs(dashboardStore)
 
 const isLoading = ref(true)
 
-// 2) dane do wykresów (reagują na lastUpdate)
+// Chart data arrays (will be mutated, not replaced)
 const balanceLabels = ref<string[]>([])
 const balanceValues = ref<number[]>([])
 const equityLabels = ref<string[]>([])
 const equityValues = ref<number[]>([])
 
-// 3) PnL (prosty przykład – z pozycji)
 const calculatedPnl = computed(() =>
   positions.value.reduce((sum, p: BackendPosition) => sum + (p.profit ?? 0), 0),
 )
-
-// 4) mapowanie pozycji do formatu tabeli
 
 const tablePositions = computed<TablePosition[]>(() =>
   positions.value.map((p: BackendPosition) => ({
@@ -117,11 +108,9 @@ const tablePositions = computed<TablePosition[]>(() =>
   })),
 )
 
-// 5) start / stop WebSocketa
 onMounted(() => {
   dashboardStore.connectWs()
 
-  // przestajemy pokazywać "Ładowanie..." po pierwszym snapshotcie
   const stop = watch(
     account,
     (acc) => {
@@ -138,18 +127,59 @@ onBeforeUnmount(() => {
   dashboardStore.disconnectWs()
 })
 
-// 6) reagowanie na każdy nowy snapshot – aktualizacja serii historycznych
+// Track last timestamp to prevent duplicate processing
+let lastProcessedTimestamp = ''
+let lastMinuteLabel = ''
+
+// Helper to get minute-level timestamp (e.g., "2024-11-25T17:31:00")
+const getMinuteTimestamp = (fullTimestamp: string): string => {
+  // Parse the timestamp and truncate to minute precision
+  const date = new Date(fullTimestamp)
+  date.setSeconds(0, 0) // Zero out seconds and milliseconds
+  return date.toISOString().slice(0, 16).replace('T', ' ') // "YYYY-MM-DD HH:MM"
+}
+
 watch(
   lastUpdate,
   (ts) => {
     if (!ts || !account.value) return
 
-    // dodajemy kolejne punkty (immutability -> wymusza rerender Chart.js)
-    balanceLabels.value = [...balanceLabels.value, ts]
-    balanceValues.value = [...balanceValues.value, account.value.balance]
+    // Prevent duplicate processing (WebSocket might send same timestamp)
+    if (ts === lastProcessedTimestamp) return
+    lastProcessedTimestamp = ts
 
-    equityLabels.value = [...equityLabels.value, ts]
-    equityValues.value = [...equityValues.value, account.value.equity]
+    // Get minute-level timestamp for X-axis label
+    const minuteLabel = getMinuteTimestamp(ts)
+
+    // Only add new point when minute changes (or first point)
+    const isNewMinute = minuteLabel !== lastMinuteLabel || balanceLabels.value.length === 0
+
+    if (isNewMinute) {
+      lastMinuteLabel = minuteLabel
+
+      // Add new data point with minute-level label
+      balanceLabels.value.push(minuteLabel)
+      balanceValues.value.push(account.value.balance)
+
+      equityLabels.value.push(minuteLabel)
+      equityValues.value.push(account.value.equity)
+    } else {
+      // Same minute - just update the last value (overwrite latest point)
+      const lastIdx = balanceValues.value.length - 1
+      if (lastIdx >= 0) {
+        balanceValues.value[lastIdx] = account.value.balance
+        equityValues.value[lastIdx] = account.value.equity
+      }
+    }
+
+    // Optional: Limit history to prevent unbounded memory growth
+    const MAX_POINTS = 1000
+    if (balanceLabels.value.length > MAX_POINTS) {
+      balanceLabels.value.shift()
+      balanceValues.value.shift()
+      equityLabels.value.shift()
+      equityValues.value.shift()
+    }
   },
   { immediate: false },
 )

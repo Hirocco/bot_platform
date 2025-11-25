@@ -8,7 +8,6 @@
           :value="props.balance"
           value-mode="currency"
           currency="USD"
-          :change="demoMetrics.balanceChange"
           change-mode="currency"
           value-tone="negative"
         />
@@ -20,7 +19,6 @@
           :value="props.equity"
           value-mode="currency"
           currency="USD"
-          :change="demoMetrics.equityChange"
           change-mode="currency"
           value-tone="positive"
         />
@@ -44,9 +42,9 @@
           :value="props.pnl"
           value-mode="currency"
           currency="USD"
-          :change="demoMetrics.dailyPnlChangePercent"
+          :change="props.pnl"
           change-mode="percent"
-          value-tone="positive"
+          :value-tone="props.pnl >= 0 ? 'positive' : 'negative'"
         />
       </div>
     </div>

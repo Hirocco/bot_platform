@@ -9,14 +9,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, type PropType } from 'vue'
+import { ref, onMounted, watch, onBeforeUnmount, type PropType } from 'vue'
 import { Chart, type TooltipItem } from 'chart.js/auto'
 
 const props = defineProps({
   title: { type: String, required: true },
   labels: { type: Array as PropType<string[]>, required: true },
   data: { type: Array as PropType<number[]>, required: true },
-  lineColor: { type: String, default: 'rgba(59,130,246,1)' }, // default: niebieski
+  lineColor: { type: String, default: 'rgba(59,130,246,1)' },
 })
 
 const canvasEl = ref<HTMLCanvasElement | null>(null)
@@ -29,22 +29,21 @@ const createGradient = (ctx: CanvasRenderingContext2D, rgbString: string) => {
   return gradient
 }
 
-const renderChart = () => {
-  if (!canvasEl.value) return
+// Create chart ONCE on mount
+const createChart = () => {
+  if (!canvasEl.value || chartInstance) return
 
   const ctx = canvasEl.value.getContext('2d')
   if (!ctx) return
   const gradient = createGradient(ctx, props.lineColor)
 
-  if (chartInstance) chartInstance.destroy()
-
   chartInstance = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: props.labels, // tu masz datę/czas
+      labels: [],
       datasets: [
         {
-          data: props.data, // tu masz saldo/equity
+          data: [],
           borderColor: props.lineColor,
           backgroundColor: gradient,
           borderWidth: 2,
@@ -58,7 +57,7 @@ const renderChart = () => {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      // ważne, żeby tooltip łapał punkt „w osi X”
+      animation: false,
       interaction: {
         mode: 'index',
         intersect: false,
@@ -78,12 +77,10 @@ const renderChart = () => {
           cornerRadius: 8,
           displayColors: false,
           callbacks: {
-            // 1. Pierwsza linia – dokładna data/godzina (z labels)
             title(tooltipItems: TooltipItem<'line'>[]) {
               const item = tooltipItems?.[0]
               return item?.label ?? ''
             },
-            // 2. Druga linia – wartość z formatowaniem $
             label(ctx) {
               const v = ctx.parsed.y
               if (v == null || Number.isNaN(v)) return ''
@@ -117,15 +114,51 @@ const renderChart = () => {
   })
 }
 
-onMounted(renderChart)
+// Update existing chart data (no recreation)
+const updateChart = () => {
+  if (!chartInstance) return
 
-// Re-render on props change
-watch(() => [props.labels, props.data], renderChart)
+  const labels = chartInstance.data.labels as string[]
+  const data = chartInstance.data.datasets[0].data as number[]
+
+  // Sync chart data with props
+  // Clear and repopulate (more reliable than direct assignment)
+  labels.length = 0
+  data.length = 0
+
+  labels.push(...props.labels)
+  data.push(...props.data)
+
+  // Update with no animation for instant refresh
+  chartInstance.update('none')
+}
+
+onMounted(() => {
+  createChart()
+  // Initial update to populate chart with any existing data
+  if (props.labels.length > 0) {
+    updateChart()
+  }
+})
+
+onBeforeUnmount(() => {
+  if (chartInstance) {
+    chartInstance.destroy()
+    chartInstance = null
+  }
+})
+
+// Watch array lengths to detect new data
+watch(
+  () => props.labels.length,
+  () => {
+    updateChart()
+  },
+)
 </script>
 
 <style scoped>
 .chart-card {
-  /* ważne: bez żadnych floatów / display:inline-block */
   display: block;
   border-radius: 20px;
   padding: 24px;

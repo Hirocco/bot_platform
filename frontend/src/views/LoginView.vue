@@ -26,10 +26,9 @@
             <div class="hero-wrapper d-flex align-center justify-center h-100">
               <v-container class="hero-content text-center">
                 <div class="hero-heading mb-6">
-                  <div class="text-h4 mb-3">Integrate VWAP strategy to your CFD trading today!</div>
+                  <div class="text-h4 mb-3">Integrate advanced strategies to your CFD trading today!</div>
                   <div class="hero-subtitle">
-                    Execute trades with institutional logic, dynamic VWAP targeting and robust risk
-                    management directly on your MT5 account.
+                    Deploy institutional-grade execution with intelligent order routing, adaptive VWAP targeting, dynamic position sizing, and enterprise-grade risk controls — seamlessly connect to the broker or platform of your choice.
                   </div>
                 </div>
 
