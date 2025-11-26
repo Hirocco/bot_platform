@@ -106,7 +106,7 @@ const formattedChange = computed(() => {
 
   // changeMode === 'percent'
   const sign = props.change >= 0 ? '+' : ''
-  return `${sign}${props.change.toFixed(1)}%`
+  return `${sign}${props.change.toFixed(3)}%`
 })
 
 // Czy pokazywać strzałkę ↑ / ↓

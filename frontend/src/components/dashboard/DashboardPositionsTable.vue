@@ -170,15 +170,33 @@ const formatPnl = (v: number | null | undefined): string => {
 
 const formatDateTime = (v: string | Date | null | undefined): string => {
   if (!v) return '—'
-  const d = v instanceof Date ? v : new Date(v)
+
+  // jeżeli string – spróbuj sparsować jako ISO, a jak się nie uda, pokaż surową wartość
+  if (typeof v === 'string') {
+    // 1) spróbuj JS Date
+    const d1 = new Date(v)
+    if (!Number.isNaN(d1.getTime())) {
+      return `${d1.getFullYear()}-${String(d1.getMonth() + 1).padStart(2, '0')}-${String(
+        d1.getDate(),
+      ).padStart(2, '0')} ${String(d1.getHours()).padStart(2, '0')}:${String(
+        d1.getMinutes(),
+      ).padStart(2, '0')}:${String(d1.getSeconds()).padStart(2, '0')}`
+    }
+
+    // 2) fallback – po prostu przytnij stringa
+    return v.replace('T', ' ').slice(0, 19)
+  }
+
+  // Date
+  const d = v
   if (Number.isNaN(d.getTime())) return '—'
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(
     2,
     '0',
-  )}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(
-    2,
-    '0',
-  )}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
+  )}:${String(d.getSeconds()).padStart(2, '0')}`
 }
 
 const pnlClass = (v: number | null | undefined): string => {

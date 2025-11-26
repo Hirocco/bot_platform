@@ -14,6 +14,7 @@
         :equity="account.equity"
         :positions="positions.length"
         :pnl="calculatedPnl"
+        :pnlChange="calculatedPercentPnL"
       />
 
       <section class="charts-row">
@@ -72,13 +73,14 @@ type BackendPosition = {
   comment: string | null
 }
 type TablePosition = {
-  ticket: number
+  positionId: number
   symbol: string
   entry: number
   current: number
   size: number
   pnl: number
   openTime: string
+  status: string
 }
 
 const dashboardStore = useDashboardStore()
@@ -93,32 +95,40 @@ const equityLabels = ref<string[]>([])
 const equityValues = ref<number[]>([])
 
 // 🔹 Łączny PnL z aktualnie otwartych pozycji (w $)
-const dailyPnl = computed(() =>
-  positions.value.reduce(
-    (sum, p: BackendPosition) => sum + (p.profit ?? 0),
-    0,
-  ),
+const calculatedPnl = computed(() =>
+  positions.value.reduce((sum, p: BackendPosition) => sum + (p.profit ?? 0), 0),
 )
 
-// 🔹 Procentowy PnL względem bieżącego balansu konta
-//     np. -50$ przy balance 80_000$ => -0.0625%
-const calculatedPnl = computed(() => {
-  if (!account.value || account.value.balance === 0) return 0
-  return (dailyPnl.value / account.value.balance) * 100
-})
+const calculatedPercentPnL = computed(() => {
+  if (!account.value || account.value.equity === 0) return 0
 
+  // Percentage change from balance to equity
+  return ((account.value.equity - account.value.balance) / account.value.balance) * 100
+})
 
 const tablePositions = computed<TablePosition[]>(() =>
   positions.value.map((p: BackendPosition) => ({
-    ticket: p.ticket,
+    positionId: p.ticket,
     symbol: p.symbol,
     entry: p.price_open,
     current: p.price_current,
     size: p.volume,
     pnl: p.profit,
     openTime: p.opened_at,
+    sl: p.sl,
+    tp: p.tp,
+    status:         
+      p.profit > 0
+        ? 'PROFIT'
+        : p.profit < 0
+        ? 'LOSS'
+        : 'BREAKEVEN',
   })),
 )
+
+watch(positions, v =>{
+  console.log('Positions updated:', v);
+})
 
 onMounted(() => {
   dashboardStore.connectWs()
@@ -144,11 +154,11 @@ let lastProcessedTimestamp = ''
 let lastMinuteLabel = ''
 
 // Helper to get minute-level timestamp (e.g., "2024-11-25T17:31:00")
-const getMinuteTimestamp = (fullTimestamp: string): string => {
+const get15sTimestamp = (fullTimestamp: string): string => {
   // Parse the timestamp and truncate to minute precision
   const date = new Date(fullTimestamp)
-  date.setSeconds(0, 0) // Zero out seconds and milliseconds
-  return date.toISOString().slice(0, 16).replace('T', ' ') // "YYYY-MM-DD HH:MM"
+  date.setSeconds(Math.floor(date.getSeconds() / 15) * 15, 0) // Zero out seconds and milliseconds to nearest 5 seconds
+  return date.toISOString().slice(0, 19).replace('T', ' ') // "YYYY-MM-DD HH:MM:SS"
 }
 
 watch(
@@ -161,7 +171,7 @@ watch(
     lastProcessedTimestamp = ts
 
     // Get minute-level timestamp for X-axis label
-    const minuteLabel = getMinuteTimestamp(ts)
+    const minuteLabel = get15sTimestamp(ts)
 
     // Only add new point when minute changes (or first point)
     const isNewMinute = minuteLabel !== lastMinuteLabel || balanceLabels.value.length === 0

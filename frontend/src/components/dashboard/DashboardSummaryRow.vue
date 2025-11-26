@@ -42,7 +42,7 @@
           :value="props.pnl"
           value-mode="currency"
           currency="USD"
-          :change="props.pnl"
+          :change="props.pnlChange"
           change-mode="percent"
           :value-tone="props.pnl >= 0 ? 'positive' : 'negative'"
         />
@@ -60,6 +60,7 @@ const props = defineProps({
   equity: { type: Number, required: true },
   positions: { type: Number, required: true },
   pnl: { type: Number, required: true },
+  pnlChange: { type: Number, required: false },
 })
 </script>
 <style scoped>
