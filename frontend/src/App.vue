@@ -1,4 +1,7 @@
 <template>
+  <div v-if="route.path !== '/login'">
+    <DashboardHeader />
+  </div>
   <component :is="layoutComponent">
     <router-view />
   </component>
@@ -8,6 +11,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import LoginLayout from '@/layouts/LoginLayout.vue'
+import DashboardHeader from './components/dashboard/DashboardHeader.vue'
 
 const route = useRoute()
 const layoutComponent = computed(() => {

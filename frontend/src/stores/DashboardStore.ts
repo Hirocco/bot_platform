@@ -43,6 +43,7 @@ export type DashboardSnapshotPayload = {
 type DashboardSnapshotMessage = {
   type: 'dashboard_snapshot'
   payload: DashboardSnapshotPayload
+  status?: string
 }
 
 type DashboardErrorMessage = {

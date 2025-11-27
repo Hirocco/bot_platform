@@ -3,6 +3,9 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import logoSrc from '/tfx-logo-removebg.png'
 import { mdiChartLine, mdiViewDashboardOutline, mdiTuneVariant, mdiCogOutline } from '@mdi/js'
+import { useBotRuntimeStore } from '@/stores/BotRuntimeStore'
+import { storeToRefs } from 'pinia'
+import { BotApi } from '@/api/BotApi'
 
 // ROUTING / TABS
 const router = useRouter()
@@ -17,7 +20,7 @@ const tabs = [
 
 const currentTab = ref<string>('dashboard')
 
-onMounted(() => {
+onMounted(async () => {
   const name = route.name as string | undefined
   if (name && tabs.some((t) => t.name === name)) {
     currentTab.value = name
@@ -43,55 +46,55 @@ const handleTabChange = (val: unknown) => {
 }
 
 // BOT STATE / BUTTONY
+const botRuntimeState = useBotRuntimeStore()
+const { runtime } = storeToRefs(botRuntimeState)
 
-const BOT_STATES = {
-  DISCONNECTED: 'DISCONNECTED',
-  CONNECTING: 'CONNECTING',
-  CONNECTED_IDLE: 'CONNECTED IDLE',
-  TRADING: 'TRADING',
-  STOPPING: 'STOPPING',
-  ERROR: 'ERROR',
-  BOT_CONNECTED: 'BOT CONNECTED',
-} as const
+// computed do LIVE (tekst + klasa)
+const liveLabel = computed(() => {
+  if (!runtime.value) return 'OFFLINE'
 
-type BotState = (typeof BOT_STATES)[keyof typeof BOT_STATES]
+  const r = runtime.value
 
-const props = defineProps<{
-  botState?: BotState
-  onToggleTrading?: () => void
-  onReconnect?: () => void
-}>()
+  if (r.last_error) return 'ERROR'
+  if (!r.is_connected) return 'DISCONNECTED'
+  if (r.is_connected && !r.is_trading) return 'CONNECTED'
+  if (r.is_connected && r.is_trading) return 'TRADING'
 
-const emit = defineEmits<{
-  (e: 'toggle-trading'): void
-  (e: 'reconnect'): void
-}>()
-
-const isTrading = computed(() => props.botState === BOT_STATES.TRADING)
-
-const stateLabel = computed(() => {
-  // Ładniejszy label, ale dalej 1:1 ze stanem
-  switch (props.botState) {
-    case BOT_STATES.DISCONNECTED:
-      return 'DISCONNECTED'
-    case BOT_STATES.CONNECTING:
-      return 'CONNECTING'
-    case BOT_STATES.CONNECTED_IDLE:
-      return 'CONNECTED IDLE'
-    case BOT_STATES.TRADING:
-      return 'TRADING'
-    case BOT_STATES.STOPPING:
-      return 'STOPPING'
-    case BOT_STATES.ERROR:
-      return 'ERROR'
-    case BOT_STATES.BOT_CONNECTED:
-      return 'BOT CONNECTED'
-    default:
-      return String(props.botState || 'ONLINE')
-  }
+  return r.state.toUpperCase()
 })
 
+
+// lokalny stan przycisku (spinner, blokada spamowania)
+const isToggleLoading = ref(false)
+
+// czy bot aktualnie handluje (na podstawie statusu z WS)
+const isTrading = computed(() => !!runtime.value?.is_trading)
+
+// label przycisku w zależności od stanu
 const tradingButtonLabel = computed(() => (isTrading.value ? 'Stop trading' : 'Start trading'))
+
+// kolor przycisku w zależności od stanu
+const tradingButtonColor = computed(() => (isTrading.value ? 'red-darken-2' : 'green-accent-4'))
+
+// główna akcja po kliknięciu
+const handleToggleTrading = async () => {
+  if (isToggleLoading.value) return
+  isToggleLoading.value = true
+  try {
+    if (!isTrading.value) {
+      // NIE handluje -> start bota z predefiniowaną konfiguracją
+      await BotApi.startBot()
+    } else {
+      // handluje -> stop
+      await BotApi.stopBot()
+    }
+    // nowy status przyjdzie przez WebSocket i zaktualizuje runtime
+  } catch (err) {
+    console.error('Toggle trading failed', err)
+  } finally {
+    isToggleLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -113,19 +116,17 @@ const tradingButtonLabel = computed(() => (isTrading.value ? 'Stop trading' : 'S
         <span class="live-dot"></span>
         <span class="live-text">LIVE</span>
         <span class="status-separator">|</span>
-        <span class="state-text">{{ stateLabel }}</span>
+        <span class="state-text">{{ liveLabel }}</span>
       </div>
 
       <div class="header-actions">
-        <v-btn size="small" variant="outlined" class="btn-reconnect" @click="emit('reconnect')">
-          Reconnect
-        </v-btn>
-
         <v-btn
           size="small"
-          :color="isTrading ? 'orange-darken-2' : 'primary'"
-          class="btn-trading"
-          @click="emit('toggle-trading')"
+          :loading="isToggleLoading"
+          :color="tradingButtonColor"
+          variant="flat"
+          class="mr-4"
+          @click="handleToggleTrading"
         >
           {{ tradingButtonLabel }}
         </v-btn>

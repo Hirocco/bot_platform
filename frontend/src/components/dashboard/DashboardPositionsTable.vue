@@ -9,7 +9,7 @@
         <thead>
           <tr>
             <th>SYMBOL</th>
-            <th>POSITION ID</th>
+            <th>SIDE</th>
             <th>ENTRY</th>
             <th>CURRENT</th>
             <th>SIZE</th>
@@ -32,7 +32,9 @@
             </td>
 
             <td class="position-id">
-              {{ pos.positionId ?? '—' }}
+              <span :class="['status-pill', sideClass(pos.direction)]">
+                {{ (pos.direction || '—').toUpperCase() }}
+              </span>
             </td>
 
             <td class="numeric">
@@ -108,7 +110,8 @@ import { computed, ref, watch } from 'vue'
 interface Position {
   id?: string | number
   symbol: string
-  positionId?: string | number
+  //positionId?: string | number
+  direction?: string
   entry: number
   current: number
   size: number
@@ -157,7 +160,7 @@ watch(
 )
 
 /* --- FORMATTERY --- */
-const formatPrice = (v: number | null | undefined): string => (v == null ? '—' : v.toFixed(4))
+const formatPrice = (v: number | null | undefined): string => (v == null ? '—' : v.toFixed(6))
 
 const formatSize = (v: number | null | undefined): string => (v == null ? '—' : v.toFixed(2))
 
@@ -208,6 +211,12 @@ const statusClass = (status?: string): string => {
   const s = (status || '').toLowerCase()
   if (s === 'profit') return 'status-profit'
   if (s === 'loss') return 'status-loss'
+  return 'status-neutral'
+}
+const sideClass = (direction?: string): string => {
+  const d = (direction || '').toLowerCase()
+  if (d === 'long') return 'status-profit' // zielony
+  if (d === 'short') return 'status-loss' // czerwony
   return 'status-neutral'
 }
 </script>

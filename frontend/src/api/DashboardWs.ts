@@ -1,4 +1,5 @@
 // src/api/DashboardWs.ts
+import { useBotRuntimeStore } from "@/stores/BotRuntimeStore"
 
 export class Mt5DashboardWs {
   private socket: WebSocket | null = null
@@ -16,6 +17,11 @@ export class Mt5DashboardWs {
       console.log('[WS] raw message:', event.data)
       try {
         const data = JSON.parse(event.data)
+        const status = data.status
+        if (status) {
+          const botRuntimeStore = useBotRuntimeStore()
+          botRuntimeStore.setRuntime(status)
+        }
         console.log('[WS] parsed message:', data)
         onMessage(data)
       } catch (e) {

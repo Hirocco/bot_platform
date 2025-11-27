@@ -1,8 +1,6 @@
 <template>
   <DashboardLayout>
     <v-container class="dashboard-container pt-12 d-flex flex-column">
-      <DashboardHeader />
-
       <div v-if="isLoading" class="text-center py-4">Ładowanie dashboardu...</div>
       <div v-else-if="error" class="text-center py-4 red--text">
         {{ error }}
@@ -49,7 +47,6 @@ import { storeToRefs } from 'pinia'
 import { useDashboardStore } from '@/stores/DashboardStore'
 
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
-import DashboardHeader from '@/components/dashboard/DashboardHeader.vue'
 import DashboardSummaryRow from '@/components/dashboard/DashboardSummaryRow.vue'
 import DashboardChart from '@/components/dashboard/DashboardChart.vue'
 import DashboardPositionsTable from '@/components/dashboard/DashboardPositionsTable.vue'
@@ -73,7 +70,7 @@ type BackendPosition = {
   comment: string | null
 }
 type TablePosition = {
-  positionId: number
+  direction: string
   symbol: string
   entry: number
   current: number
@@ -108,26 +105,21 @@ const calculatedPercentPnL = computed(() => {
 
 const tablePositions = computed<TablePosition[]>(() =>
   positions.value.map((p: BackendPosition) => ({
-    positionId: p.ticket,
     symbol: p.symbol,
+    direction: p.type ==  0 ? 'LONG' : 'SHORT',
     entry: p.price_open,
     current: p.price_current,
     size: p.volume,
-    pnl: p.profit,
-    openTime: p.opened_at,
     sl: p.sl,
     tp: p.tp,
-    status:         
-      p.profit > 0
-        ? 'PROFIT'
-        : p.profit < 0
-        ? 'LOSS'
-        : 'BREAKEVEN',
+    pnl: p.profit,
+    openTime: p.opened_at,
+    status: p.profit > 0 ? 'PROFIT' : p.profit < 0 ? 'LOSS' : 'BREAKEVEN',
   })),
 )
 
-watch(positions, v =>{
-  console.log('Positions updated:', v);
+watch(positions, (v) => {
+  console.log('Positions updated:', v)
 })
 
 onMounted(() => {
@@ -157,7 +149,7 @@ let lastMinuteLabel = ''
 const get15sTimestamp = (fullTimestamp: string): string => {
   // Parse the timestamp and truncate to minute precision
   const date = new Date(fullTimestamp)
-  date.setSeconds(Math.floor(date.getSeconds() / 15) * 15, 0) // Zero out seconds and milliseconds to nearest 5 seconds
+  date.setSeconds(Math.floor(date.getSeconds() / 30) * 30, 0) // Zero out seconds and milliseconds to nearest 30 seconds
   return date.toISOString().slice(0, 19).replace('T', ' ') // "YYYY-MM-DD HH:MM:SS"
 }
 
