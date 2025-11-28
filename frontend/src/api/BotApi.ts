@@ -40,7 +40,7 @@ const payload: CreateBotDTO = {
     }
 export class BotApi {
   static async createBot(data = payload){ 
-    const url = `${BASE_URL}/create`
+    const url = `${BASE_URL}/BOT_001/create`
     return axios.post(url, data, {
       headers: {
         'Content-Type': 'application/json',
@@ -49,7 +49,7 @@ export class BotApi {
   }
   static async initBot(){
     const data = {"gateway_id": "MT5_GATEWAY_1"}
-    const url = `${BASE_URL}/init`
+    const url = `${BASE_URL}/BOT_001/init`
     return axios.post(url, data, {
       headers: {
         'Content-Type': 'application/json',
@@ -58,8 +58,7 @@ export class BotApi {
   }
   static async startBot(){
     const data = {"enabled": true}
-    const botId = "BOT_001"
-    const url = `${BASE_URL}/${botId}/start`
+    const url = `${BASE_URL}/BOT_001/start`
     return axios.post(url, data, {
       headers: {
         'Content-Type': 'application/json',

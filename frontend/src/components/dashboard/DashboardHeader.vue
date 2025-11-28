@@ -12,17 +12,17 @@ const router = useRouter()
 const route = useRoute()
 
 const tabs = [
-  { label: 'Dashboard', name: 'dashboard', icon: mdiViewDashboardOutline },
-  { label: 'Strategies', name: 'strategies', icon: mdiChartLine },
-  { label: 'Parameters', name: 'parameters', icon: mdiTuneVariant },
-  { label: 'Settings', name: 'settings', icon: mdiCogOutline },
+  { label: 'Dashboard', name: 'dashboard', icon: mdiViewDashboardOutline, enabled: true },
+  { label: 'Strategies', name: 'strategies', icon: mdiChartLine, enabled: false },
+  { label: 'Parameters', name: 'parameters', icon: mdiTuneVariant, enabled: false },
+  { label: 'Settings', name: 'settings', icon: mdiCogOutline, enabled: false },
 ]
 
 const currentTab = ref<string>('dashboard')
 
 onMounted(async () => {
   const name = route.name as string | undefined
-  if (name && tabs.some((t) => t.name === name)) {
+  if (name && tabs.some((t) => t.enabled && t.name === name)) {
     currentTab.value = name
   }
 })
@@ -39,6 +39,15 @@ watch(
 
 const handleTabChange = (val: unknown) => {
   if (typeof val !== 'string') return
+
+  const target = tabs.find((t) => t.name === val)
+
+  // jeśli tab jest wyłączony – nic nie rób, przywróć aktualny
+  if (!target || target.enabled === false) {
+    currentTab.value = (route.name as string) || 'dashboard'
+    return
+  }
+
   currentTab.value = val
   if (val !== route.name) {
     router.push({ name: val }).catch(() => {})
@@ -63,7 +72,6 @@ const liveLabel = computed(() => {
   return r.state.toUpperCase()
 })
 
-
 // lokalny stan przycisku (spinner, blokada spamowania)
 const isToggleLoading = ref(false)
 
@@ -82,7 +90,8 @@ const handleToggleTrading = async () => {
   isToggleLoading.value = true
   try {
     if (!isTrading.value) {
-      // NIE handluje -> start bota z predefiniowaną konfiguracją
+      await BotApi.createBot()
+      await BotApi.initBot()
       await BotApi.startBot()
     } else {
       // handluje -> stop
@@ -142,8 +151,15 @@ const handleToggleTrading = async () => {
         density="comfortable"
         class="dashboard-tabs"
       >
-        <v-tab v-for="tab in tabs" :key="tab.name" :value="tab.name" class="dashboard-tab">
-          <!-- jeśli masz poprawnie skonfigurowane mdi-svg, to zadziała: -->
+        <v-tab
+          v-for="tab in tabs"
+          :key="tab.name"
+          :value="tab.name"
+          class="dashboard-tab"
+          :class="{ 'dashboard-tab--disabled': tab.enabled === false }"
+          :disabled="tab.enabled === false"
+          :ripple="tab.enabled !== false"
+        >
           <v-icon :icon="tab.icon" size="18" class="mr-2" />
           <span>{{ tab.label }}</span>
         </v-tab>
@@ -294,17 +310,22 @@ const handleToggleTrading = async () => {
 }
 
 .btn-trading {
-  text-transform: none;
-  font-size: 13px;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.12em;
   border-radius: 999px;
   padding-inline: 18px;
+  height: 32px;
+  box-shadow: none;
 }
 
 /* TABS */
 
 .header-nav {
-  grid-area: nav;
-  margin-left: 10vw;
+  grid-area: nav; /* ta linia nic nie psuje, możesz zostawić */
+  margin-left: auto; /* zamiast 10vw */
+  display: flex;
+  justify-content: flex-end; /* tabsy trzymają się prawej krawędzi */
 }
 
 .dashboard-tabs {
@@ -367,7 +388,11 @@ const handleToggleTrading = async () => {
     padding: 12px 16px;
     row-gap: 8px;
   }
-
+  .header-nav {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center; /* na węższych ekranach tabsy centrowane */
+  }
   .header-right {
     justify-content: space-between;
   }

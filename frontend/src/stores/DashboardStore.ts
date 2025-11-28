@@ -72,11 +72,15 @@ const wsClient = new Mt5DashboardWs('ws://127.0.0.1:8000/ws/mt5/dashboard')
 
 export const useDashboardStore = defineStore('dashboard', {
   state: () => ({
+    // data 
     account: null as DashboardAccount | null,
     positions: [] as DashboardPosition[],
     terminalInfo: null as string | null,
     lastUpdate: null as string | null,
 
+    // runtime
+    isInitialized: false,
+    isLoading: false,
     wsConnected: false,
     error: null as string | null,
   }),
@@ -87,6 +91,14 @@ export const useDashboardStore = defineStore('dashboard', {
   },
 
   actions: {
+    async init(){
+      if (this.isInitialized) return
+      this.isLoading = true
+      this.error = null
+      this.isInitialized = true
+
+      this.connectWs()
+    },
     connectWs() {
       if (this.wsConnected) return
 
@@ -96,6 +108,7 @@ export const useDashboardStore = defineStore('dashboard', {
         (data) => {
           console.log('[STORE] Received data from WS')
           this.handleMessage(data)
+          this.isLoading = false
         },
         (err) => {
           console.error('[STORE] WS error in store:', err)

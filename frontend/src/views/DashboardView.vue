@@ -1,7 +1,7 @@
 <template>
   <DashboardLayout>
     <v-container class="dashboard-container pt-12 d-flex flex-column">
-      <div v-if="isLoading" class="text-center py-4">Ładowanie dashboardu...</div>
+      <div v-if="dashboardStore.isLoading" class="text-center py-4">Loading dashboard...</div>
       <div v-else-if="error" class="text-center py-4 red--text">
         {{ error }}
       </div>
@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDashboardStore } from '@/stores/DashboardStore'
 
@@ -83,8 +83,6 @@ type TablePosition = {
 const dashboardStore = useDashboardStore()
 const { account, positions, lastUpdate, error } = storeToRefs(dashboardStore)
 
-const isLoading = ref(true)
-
 // Chart data arrays (will be mutated, not replaced)
 const balanceLabels = ref<string[]>([])
 const balanceValues = ref<number[]>([])
@@ -118,28 +116,6 @@ const tablePositions = computed<TablePosition[]>(() =>
   })),
 )
 
-watch(positions, (v) => {
-  console.log('Positions updated:', v)
-})
-
-onMounted(() => {
-  dashboardStore.connectWs()
-
-  const stop = watch(
-    account,
-    (acc) => {
-      if (acc) {
-        isLoading.value = false
-        stop()
-      }
-    },
-    { immediate: true },
-  )
-})
-
-onBeforeUnmount(() => {
-  dashboardStore.disconnectWs()
-})
 
 // Track last timestamp to prevent duplicate processing
 let lastProcessedTimestamp = ''

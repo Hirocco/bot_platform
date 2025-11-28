@@ -1,24 +1,37 @@
 <template>
-  <div v-if="route.path !== '/login'">
-    <DashboardHeader />
-  </div>
-  <component :is="layoutComponent">
+  <!-- Widok logowania w osobnym layoutcie -->
+  <LoginLayout v-if="route.path === '/login'">
     <router-view />
-  </component>
+  </LoginLayout>
+
+  <!-- Cała reszta aplikacji (po zalogowaniu) -->
+  <div v-else class="app-shell">
+    <DashboardHeader />
+
+    <main class="app-main">
+      <router-view />
+    </main>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { watch } from 'vue'
 import { useRoute } from 'vue-router'
 import LoginLayout from '@/layouts/LoginLayout.vue'
 import DashboardHeader from './components/dashboard/DashboardHeader.vue'
+import { useDashboardStore } from '@/stores/DashboardStore'
 
 const route = useRoute()
-const layoutComponent = computed(() => {
-  // Możesz dodać więcej warunków dla różnych layoutów
-  if (route.path === '/login') {
-    return LoginLayout
-  }
-  return 'div' // Domyślny layout
-})
+const dashboardStore = useDashboardStore()
+
+// 🔹 inicjalizacja dashboardu na wszystkich ścieżkach ≠ /login
+watch(
+  () => route.path,
+  (path) => {
+    if (path !== '/login') {
+      dashboardStore.init()
+    }
+  },
+  { immediate: true },
+)
 </script>

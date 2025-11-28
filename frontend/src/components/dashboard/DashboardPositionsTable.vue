@@ -179,6 +179,7 @@ const formatDateTime = (v: string | Date | null | undefined): string => {
     // 1) spróbuj JS Date
     const d1 = new Date(v)
     if (!Number.isNaN(d1.getTime())) {
+      d1.setHours(d1.getHours() + 1)
       return `${d1.getFullYear()}-${String(d1.getMonth() + 1).padStart(2, '0')}-${String(
         d1.getDate(),
       ).padStart(2, '0')} ${String(d1.getHours()).padStart(2, '0')}:${String(
@@ -193,6 +194,8 @@ const formatDateTime = (v: string | Date | null | undefined): string => {
   // Date
   const d = v
   if (Number.isNaN(d.getTime())) return '—'
+
+  d.setHours(d.getHours() + 1)
 
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
     d.getDate(),
